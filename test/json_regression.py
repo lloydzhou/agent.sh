@@ -10,7 +10,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV = dict(os.environ, LC_ALL="C", LANG="C")
-SOURCE = ROOT / "src/agent.sh"
+SOURCE = ROOT / "agent.sh"
 SCRIPT = SOURCE.read_text()
 
 

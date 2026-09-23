@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
     work = Path(tmp)
     library = work / 'agent-library.sh'
-    library.write_text((ROOT / 'src/agent.sh').read_text().rsplit('main "$@"', 1)[0])
+    library.write_text((ROOT / 'agent.sh').read_text().rsplit('main "$@"', 1)[0])
     agent = work / '.agents'
     env = dict(os.environ, LC_ALL='C', LANG='C')
     env.pop('AGENT_DIR', None)
@@ -88,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
     env['AGENT_DIR'] = 'custom-state'
     assert 'path: custom-state/skills/review/SKILL.md' in run('agent_build_prompt')
     for args in [['-m'], ['--model'], ['--model', '']]:
-        result = subprocess.run(['bash', str(ROOT / 'src/agent.sh'), *args],
+        result = subprocess.run(['bash', str(ROOT / 'agent.sh'), *args],
                                 env=env, cwd=work, capture_output=True, text=True, timeout=3)
         assert result.returncode == 1 and 'requires a model' in result.stderr
 print('Prompt regressions ok (rules, locale, reload, init, missing/empty rules, and skill index)')

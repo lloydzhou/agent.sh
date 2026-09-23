@@ -64,7 +64,7 @@ sys.stdout.write(responses[n])
     curl.chmod(0o755)
     for name, wires, history, args, stdin, turns, rc, roles, executions in cases:
         snapshots = []
-        for source in [ROOT / 'src/agent.sh'] + ([options.compare.resolve()] if options.compare else []):
+        for source in [ROOT / 'agent.sh'] + ([options.compare.resolve()] if options.compare else []):
             agent = work / 'agent'
             (agent / 'tools').mkdir(parents=True, exist_ok=True)
             (work / 'AGENTS.md').write_text('Test instructions.')

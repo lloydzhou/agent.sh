@@ -21,7 +21,7 @@ cases = [
 ]
 with tempfile.TemporaryDirectory(prefix='agent-tool-desc-') as tmp:
     library = Path(tmp) / 'library.sh'
-    for source in [ROOT / 'src/agent.sh'] + ([options.compare] if options.compare else []):
+    for source in [ROOT / 'agent.sh'] + ([options.compare] if options.compare else []):
         library.write_text(source.read_text().rsplit('main "$@"', 1)[0])
         for name, man, help_text, expected in cases:
             result = subprocess.run(['bash', '-c', '''source "$1"

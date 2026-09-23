@@ -3,9 +3,9 @@
 set -e
 cd "$(dirname "$0")/.."
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
-sed -n "/<<'AWK_PROGRAM'/,/^AWK_PROGRAM$/p" src/agent.sh | sed '1d;$d' > "$d/program.awk"
+sed -n "/<<'AWK_PROGRAM'/,/^AWK_PROGRAM$/p" agent.sh | sed '1d;$d' > "$d/program.awk"
 # Exercise the actual inline HTTP filter.
-script=src/agent.sh
+script=agent.sh
 sed -n "/| util_awk_run '/,/^        ' /p" "$script" | sed '1d;$d' > "$d/http.awk"
 out=$(printf 'HTTP/1.1 200 OK\r\nX-Test: yes\r\n\r\ndata: [DONE]\r\n' | awk -f "$d/http.awk")
 [ "$out" = 'data: [DONE]' ] || { echo "FAIL: HTTP headers ($script)"; exit 1; }
@@ -42,7 +42,7 @@ esc=$(printf 'a"b\nc 中文' | LC_ALL=C awk -v json_mode=escape_string -f "$d/pr
 
 # Check middle truncation, including zero-length tails and exact-limit output.
 (
-    sed -n '/^tool_execute() {/,/^}/p' src/agent.sh > "$d/tool.sh"
+    sed -n '/^tool_execute() {/,/^}/p' agent.sh > "$d/tool.sh"
     source "$d/tool.sh"
     util_run_timeout() { printf '%s' 'abcdef'; }
     TOOLS_DIR=/bin TOOL_TIMEOUT_SECS=1

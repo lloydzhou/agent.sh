@@ -8,7 +8,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='agent-timeout-') as tmp:
     library = Path(tmp) / 'agent.sh'
-    library.write_text((ROOT / 'src/agent.sh').read_text().rsplit('main "$@"', 1)[0])
+    library.write_text((ROOT / 'agent.sh').read_text().rsplit('main "$@"', 1)[0])
 
     def run(seconds, command, stdin=''):
         start = time.monotonic()

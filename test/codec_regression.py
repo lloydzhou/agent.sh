@@ -45,7 +45,7 @@ odd = ['\\', '\\u', '\\u1', '\\u123', '\\u12xz', '\\q', '\\U1234',
        '\\ud800\\uZZZZ', '\\uD83D\\uDE00', '\\\\u0041']
 odd += [f'\\u{cp:04x}' for cp in range(0xD800, 0xE000)]
 odd += [''.join(rng.choice('abc\\u012XYZ') for _ in range(30)) for _ in range(1000)]
-current = helpers(ROOT / 'src/agent.sh')
+current = helpers(ROOT / 'agent.sh')
 # Some awk implementations turn sprintf("%c", 0) into an empty string.
 # Probe the interpreter independently; keep NUL in decode and baseline coverage.
 nul = subprocess.check_output(['awk', 'BEGIN { printf "%s", sprintf("%c", 0) }'], env=ENV)

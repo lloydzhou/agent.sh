@@ -1,29 +1,83 @@
+<div align="center">
+
 # agent.sh
 
-Filesystem-first AI agent in pure bash/awk. OpenAI Chat Completions only.
-Dependencies: `bash`, `curl`, `awk` — nothing else. Run `src/agent.sh`
-directly or copy it anywhere. All awk programs are inline; no build step
-or runtime awk files are needed.
+**One script. Your tools. An AI agent.**
 
-User instructions live in the project-root `AGENTS.md`; executable tools
-and conversation state live in `.agents/`. All are ordinary files.
+A filesystem-first AI agent in ~550 lines of Bash + awk.
+
+[![Single file](https://img.shields.io/badge/runtime-1_file-2563eb?style=flat-square)](agent.sh)
+[![Shell](https://img.shields.io/badge/Bash-%2B_curl_%2B_awk-4eaa25?style=flat-square&logo=gnubash&logoColor=white)](#quick-start)
+[![No build step](https://img.shields.io/badge/build-none-f59e0b?style=flat-square)](#quick-start)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/lloydzhou/agent.sh?style=flat-square)](https://github.com/lloydzhou/agent.sh/stargazers)
+
+**No SDK. No npm or pip. No build step.**
+
+[Quick start](#quick-start) · [Tools](#tools--executables-with-an-argument-array) · [Skills](#skills-without-a-skill-tool) · [Configuration](#configuration)
+
+</div>
+
+---
+
+**Give your agent a tool with a symlink:**
+
+```sh
+ln -s "$(command -v cat)" .agents/tools/cat
+./agent.sh "Read README.md and summarize this project."
+```
+
+That's the tool registration. No plugin manifest, wrapper, or SDK to write.
+Run `init` and configure your API key first—see below.
+
+## Why agent.sh?
+
+- **Small enough to read end to end.** The runtime lives in one script, including JSON parsing and SSE streaming. Copy it anywhere; no generated files.
+- **Your executables are the tools.** Drop a binary, script, or symlink into `.agents/tools/`. Names and descriptions are discovered automatically.
+- **Instructions are just Markdown.** Edit the project-root `AGENTS.md`; the next request picks it up. Built-in tool rules stay intact.
+- **Skills without a framework.** Add `.agents/skills/<name>/SKILL.md`. A lightweight index goes into the prompt; existing tools read the full instructions on demand.
+- **Conversation is just a file.** History stays in `.agents/conv.jsonl`. Restart to continue; move the file to start fresh.
+- **A working agent loop, not just a chat wrapper.** Streaming replies, tool execution, error feedback, retries, and bounded tool output—all in the same file.
+
+Use it as a small terminal assistant, a base for your own agent, or an agent loop
+you can inspect without navigating a framework.
 
 ## Quick start
 
-```sh
-export OPENAI_API_KEY=sk-...
-# optional: export OPENAI_BASE_URL=... MODEL=...
+Runtime: **Bash, curl, awk**, plus standard shell utilities. No Python, Node.js,
+`jq`, or model SDK is required by the runtime. You need an API endpoint supporting
+streaming Chat Completions, plus a model with tool-calling support to use tools.
 
-./src/agent.sh init          # creates AGENTS.md and .agents/{conv.jsonl,tools/}
-./src/agent.sh "hello"       # one-shot
-./src/agent.sh               # interactive REPL (no prompt + terminal)
-./src/agent.sh < prompt.txt  # read prompt from stdin
-mv -i .agents/conv.jsonl ".agents/conv-$(date +%Y%m%d-%H%M%S).jsonl"  # back up and start fresh
+```sh
+git clone https://github.com/lloydzhou/agent.sh.git
+cd agent.sh
+
+export OPENAI_API_KEY="your-api-key"
+export MODEL="your-model-name"  # a model supported by your endpoint
+# Optional: export OPENAI_BASE_URL="https://your-provider.example/v1"
+
+./agent.sh init
+ln -s "$(command -v cat)" .agents/tools/cat
+./agent.sh "Read README.md and summarize this project."
 ```
 
-The conversation persists in `.agents/conv.jsonl` (one OpenAI message per
-line) and is reloaded on every start — restarting continues where you left
-off.
+Prefer a standalone script? Copy `agent.sh` into your own project. It uses the
+**current working directory**, not the script's location, for rules and state.
+
+```sh
+./agent.sh "hello"       # one-shot
+./agent.sh               # interactive REPL
+./agent.sh < prompt.txt  # prompt from stdin
+```
+
+Restarting resumes the stored conversation. To back it up and start fresh:
+
+```sh
+mv -i .agents/conv.jsonl ".agents/conv-$(date +%Y%m%d-%H%M%S).jsonl"
+```
+
+> **Tools are not sandboxed.** They run with your shell privileges and
+> model-supplied arguments. Start with tools you trust and a disposable workspace.
 
 ## Layout
 
@@ -41,17 +95,7 @@ remain present even when you customize the agent. Locale selects the default
 output language (Chinese or English); user instructions can override it.
 Only `$PWD/AGENTS.md` is loaded, without parent-directory or recursive discovery.
 `AGENT_DIR` overrides the tools/state directory, not the instructions location.
-The optional `skills/` directory is not created by `init`. Each request scans
-`$AGENT_DIR/skills/*/SKILL.md` and adds a `<skill-index>` between the environment
-and user instructions. Entries contain the directory name, single-line
-`description:` from `---` frontmatter, and the file path. Matching outer quotes
-are removed; YAML escapes, multiline descriptions, and other YAML syntax are
-not interpreted. Missing/unsupported descriptions leave just the name and path.
-No recursive discovery, cache, or skill-body preloading is used. The model reads
-matching files through available tools (for example `cat` or `bash`); the index
-does not add a dedicated skill tool.
-
-`./src/agent.sh init` creates a minimal editable `AGENTS.md` without overwriting
+`./agent.sh init` creates a minimal editable `AGENTS.md` without overwriting
 existing instructions or conversation history. No migration or fallback files.
 
 ## Tools = executables with an argument array
@@ -60,8 +104,9 @@ Drop any executable into `.agents/tools/` — a binary, a symlink to one, or
 your own script. Filename is the tool name:
 
 ```sh
-ln -s /bin/cat .agents/tools/cat
-ln -s /usr/bin/jq .agents/tools/jq
+ln -s "$(command -v cat)" .agents/tools/cat
+# If jq is installed, you can expose it too:
+ln -s "$(command -v jq)" .agents/tools/jq
 ```
 
 Every tool receives an `args` array of strings. The agent passes each
@@ -99,6 +144,45 @@ Rules:
 - Tools run with your shell privileges — only put executables you trust in
   `.agents/tools/`, and remember the model controls `args`.
 
+## Skills without a skill tool
+
+```text
+.agents/skills/
+└── code-review/
+    ├── SKILL.md
+    └── references/
+```
+
+A minimal `SKILL.md`:
+
+```markdown
+---
+name: code-review
+description: Review code changes for correctness and maintainability.
+---
+Read the changed files. Prioritize bugs and regressions over style preferences.
+Explain each finding with a file location and a suggested fix.
+```
+
+The agent sees the index first, then uses a suitable available tool such as `cat`
+or `bash` to read a matching skill. **You do not need `.agents/tools/skill`.** If no
+suitable tool is available, the prompt tells the model not to assume the contents.
+
+<details>
+<summary>Index format and scope</summary>
+
+The optional `skills/` directory is not created by `init`. Each request scans
+`$AGENT_DIR/skills/*/SKILL.md` and adds a `<skill-index>` between the environment
+and user instructions. Entries contain the directory name, single-line
+`description:` from `---` frontmatter, and the file path. Matching outer quotes
+are removed; YAML escapes, multiline descriptions, and other YAML syntax are
+not interpreted. Missing/unsupported descriptions leave just the name and path.
+No recursive discovery, cache, or skill-body preloading is used. The model reads
+matching files through available tools (for example `cat` or `bash`); the index
+does not add a dedicated skill tool.
+
+</details>
+
 ## Configuration
 
 | Env | Default | Purpose |
@@ -113,60 +197,14 @@ Rules:
 
 CLI: `init`, `-m/--model`, `-h/--help`.
 
-## Repository layout
-
-```
-src/agent.sh          standalone agent, including inline HTTP, JSON, and SSE programs
-test/run.sh          run all offline checks (Bash + Python 3)
-test/smoke.sh         HTTP/SSE/escape assertions against the inline programs
-test/json_regression.py JSON and tool-loop regressions, including an isolated script copy
-test/loop_regression.py loop, history, retry/error, stdin, and optional baseline comparisons
-```
-
-The JSON helpers and SSE parser share one `AWK_PROGRAM` variable, defined
-with a quoted heredoc in the opening variable section and passed directly
-to awk. String encoding selects `json_mode=escape_string`; otherwise it
-parses SSE. There is no separate source/build layout or temp-file
-extraction.
-
-Internal event flow — plain-text lines, vocabulary straight from the Chat
-Completions schema (delta field names), so the pipe is debuggable with tee:
-
-```
-curl -D - (SSE) → inline HTTP filter → inline JSON + SSE parser → line events → agent loop
-  content\t<delta>   reasoning\t<delta>
-  tool_calls\t<name>\t<id>\t<call-json>[\t=<arg>...]
-  finish_reason\t<value>   error\t<msg>   retry
-```
-
-The stream uses the first choice and incremental deltas only (no full-content
-resend detection). The optional reasoning field is `reasoning_content`.
-Tool-call JSON retains the original accumulated `arguments` text for history;
-only the execution copy is decoded into argv. All event fields are escaped;
-the `=` prefix preserves empty argv elements across Bash tab splitting.
-
-## Verification
-
-```sh
-bash test/run.sh
-```
-
-Tests require Python 3 in addition to the runtime dependencies. They run offline,
-use temporary directories, and do not call a real API or touch your conversation.
-
-- `smoke.sh`: inline HTTP/SSE filters, escaping, and middle truncation.
-- `codec_regression.py`: Unicode and JSON string codecs.
-- `json_regression.py`: fragmented tool arguments, argv/history round trips, and standalone deployment.
-- `loop_regression.py`: history, retry/error handling, stdin, and turn limits.
-- `prompt_regression.py`: root instructions, init, locale, and the skill index.
-- `timeout_regression.py`: the simple timer and its documented exit-status mapping.
-- `tool_desc_regression.py`: exact man matches and help fallback.
-
-The codec, loop, and tool-description tests also accept `--compare PATH` to
-compare against a previous script version.
+Curious about the internals? See [Implementation notes](ARCHITECTURE.md).
 
 ## Origins
 
-Derived from my `bash-agent` implementation and simplified into a single-file
-runtime. Filesystem-based tool discovery is inspired by `vercel/eve`; tools here
-are ordinary executables.
+Derived from [bash-agent](https://github.com/lloydzhou/bash-agent) and simplified
+into a single-file runtime. Filesystem-based tool discovery is inspired by
+[vercel/eve](https://github.com/vercel/eve); tools here are ordinary executables.
+
+## License
+
+[MIT](LICENSE) © 2026 lloydzhou.
