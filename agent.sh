@@ -147,7 +147,7 @@ BEGIN {
     if (json_mode == "escape_string") {
         if ((getline json_input) < 0) json_input = ""
         else while ((getline _line) > 0) json_input = json_input "\n" _line
-        printf "%s", jescape(json_input)
+        printf "%s", jescape(substr(json_input, 1, length(json_input) - 1))
         exit 0
     }
 }
@@ -254,7 +254,8 @@ util_die() {
 }
 
 util_json_escape() {
-    printf '%s' "${1:-}" | util_awk_run -v json_mode=escape_string "$AWK_PROGRAM"
+    # A final sentinel preserves trailing newlines through awk's record reader.
+    printf '%s.' "${1:-}" | util_awk_run -v json_mode=escape_string "$AWK_PROGRAM"
 }
 
 # ================= init / system prompt =================
@@ -410,13 +411,13 @@ display() {
 
 # ================= agent loop =================
 agent_loop() {
-    local turn=0 stop="" text="" calls="" tool_messages="" _line _type _rest
+    local turn=0 stop="" text="" reasoning="" reasoning_field="" calls="" tool_messages="" _line _type _rest
     conv_append '{"role":"user","content":"'"$(util_json_escape "$1")"'"}'
     INTERRUPT_REQUESTED=false
     trap 'INTERRUPT_REQUESTED=true' INT
     while (( turn < MAX_TURNS )); do
         (( turn++ )) || true
-        stop=""; text=""; calls=""; tool_messages=""
+        stop=""; text=""; reasoning=""; calls=""; tool_messages=""
         exec 8< <(llm_call)
         while IFS= read -r _line <&8; do
             [[ "$INTERRUPT_REQUESTED" == true ]] && { stop="interrupted"; break; }
@@ -428,7 +429,7 @@ agent_loop() {
                     display content "$REPLY"
                     text+="$REPLY" ;;
                 reasoning)
-                    util_unescape "$_rest"; display reasoning "$REPLY" ;;
+                    util_unescape "$_rest"; display reasoning "$REPLY"; reasoning+="$REPLY" ;;
                 tool_calls)
                     # name, id, complete call JSON, then '='-prefixed argv fields.
                     local _f=() _argv=() _name _id _call _output _i
@@ -446,7 +447,7 @@ agent_loop() {
                     tool_messages+='{"role":"tool","tool_call_id":"'"$(util_json_escape "$_id")"'","content":"'"$(util_json_escape "$_output")"'"}'$'\n' ;;
                 retry)
                     display retry
-                    text=""; calls=""; tool_messages="" ;;
+                    text=""; reasoning=""; calls=""; tool_messages="" ;;
                 finish_reason)
                     stop="$_rest" ;;
                 error)
@@ -457,14 +458,16 @@ agent_loop() {
         exec 8<&-
         [[ "$stop" == "interrupted" || "$stop" == "error" ]] && break
         # Persist this assistant turn, then continue only when tools were called
+        reasoning_field=""
+        [[ -n "$reasoning" ]] && reasoning_field=',"reasoning_content":"'"$(util_json_escape "$reasoning")"'"'
         if [[ -n "$calls" ]]; then
             local content_field="null"
             [[ -n "$text" ]] && content_field='"'"$(util_json_escape "$text")"'"'
-            conv_append '{"role":"assistant","content":'"$content_field"',"tool_calls":['"$calls"']}'
+            conv_append '{"role":"assistant","content":'"$content_field"',"tool_calls":['"$calls"']'"$reasoning_field"'}'
             printf '%s' "$tool_messages" >> "$CONV_FILE"
             [[ "$stop" == "tool_calls" ]] && continue
         else
-            [[ -n "$text" ]] && conv_append '{"role":"assistant","content":"'"$(util_json_escape "$text")"'"}'
+            [[ -n "$text$reasoning" ]] && conv_append '{"role":"assistant","content":"'"$(util_json_escape "$text")"'"'"$reasoning_field"'}'
         fi
         break
     done

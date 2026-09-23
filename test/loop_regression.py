@@ -28,6 +28,10 @@ def call(ident):
 
 plain = response(event({'content': 'ok'}, 'stop'))
 tool = response(event({'tool_calls': [call('c1')]}, 'tool_calls'))
+thought = 'check "quoted" 中文\n\t\\path\n'
+thinking_tool = response(event({'reasoning_content': thought[:9]}) +
+                         event({'reasoning_content': thought[9:]}) +
+                         event({'tool_calls': [call('c1')]}, 'tool_calls'))
 prior = [{'role': 'user', 'content': 'earlier'}, {'role': 'assistant', 'content': 'answer'}]
 # name, responses, prior history, CLI args, stdin, max turns, expected rc, roles, executions
 cases = [
@@ -37,11 +41,14 @@ cases = [
     ('history', [plain], prior, ['prompt'], '', 3, 0, ['user', 'assistant', 'user', 'assistant'], 0),
     ('reasoning', [response(event({'reasoning_content': 'think'}) + event({'content': 'ok'}, 'stop'))], [], ['prompt'], '', 3, 0, ['user', 'assistant'], 0),
     ('tools', [tool, plain], [], ['prompt'], '', 3, 0, ['user', 'assistant', 'tool', 'assistant'], 1),
+    ('reasoning-tools', [thinking_tool, thinking_tool, plain], [], ['prompt'], '', 4, 0, ['user', 'assistant', 'tool', 'assistant', 'tool', 'assistant'], 2),
+    ('reasoning-only', [response(event({'reasoning_content': thought}, 'stop'))], [], ['prompt'], '', 3, 0, ['user', 'assistant'], 0),
+    ('reasoning-retry', [response(event({'reasoning_content': 'discard'}), False) + thinking_tool, plain], [], ['prompt'], '', 3, 0, ['user', 'assistant', 'tool', 'assistant'], 1),
     ('mixed', [response(event({'content': 'checking', 'tool_calls': [call('c1')]}, 'tool_calls')), plain], [], ['prompt'], '', 3, 0, ['user', 'assistant', 'tool', 'assistant'], 1),
     ('http-error', ['HTTP/1.1 500 Error\r\n\r\nbroken\n'], [], ['prompt'], '', 3, 1, ['user'], 0),
     ('partial-error', [response(event({'content': 'partial'}) + 'curl: (56) failed\n', False)], [], ['prompt'], '', 3, 1, ['user'], 0),
     ('tool-error', [response(event({'tool_calls': [call('c1')]}, 'tool_calls') + 'curl: (56) failed\n', False)], [], ['prompt'], '', 3, 1, ['user'], 1),
-    ('retry', [response(event({'content': 'discard'}), False) + plain], [], ['prompt'], '', 3, 0, ['user', 'assistant'], 0),
+    ('retry', [response(event({'content': 'discard', 'reasoning_content': 'discard'}), False) + plain], [], ['prompt'], '', 3, 0, ['user', 'assistant'], 0),
     ('tool-retry', [response(event({'tool_calls': [call('discard')]}, 'tool_calls'), False) + tool, plain], [], ['prompt'], '', 3, 0, ['user', 'assistant', 'tool', 'assistant'], 2),
     ('max-turns', [tool], [], ['prompt'], '', 1, 1, ['user', 'assistant', 'tool'], 1),
 ]
@@ -96,8 +103,25 @@ print('result "quoted" 中文\\nlast')
             assert requests[0]['messages'][0]['role'] == 'system'
             assert requests[0]['messages'][1:-1] == history
             assert requests[0]['messages'][-1] == {'role': 'user', 'content': args[0] if args else stdin.rstrip('\n')}
-            if name in ('retry', 'tool-retry'):
+            if name in ('retry', 'tool-retry', 'reasoning-retry'):
                 assert 'discard' not in raw, (name, raw)
+            if name == 'reasoning':
+                assert messages[-1]['reasoning_content'] == 'think', messages
+            elif name == 'reasoning-only':
+                assert messages[-1] == {'role': 'assistant', 'content': '', 'reasoning_content': thought}, messages
+            elif name in ('reasoning-tools', 'reasoning-retry'):
+                for message in messages:
+                    if message.get('tool_calls'):
+                        assert message['reasoning_content'] == thought, message
+                        assert message['content'] is None, message
+                for request in requests[1:]:
+                    for message in request['messages']:
+                        if message.get('tool_calls'):
+                            assert message['reasoning_content'] == thought, request
+                    assert any(m.get('tool_calls') for m in request['messages']), request
+                assert 'reasoning_content' not in messages[-1], messages
+            else:
+                assert all('reasoning_content' not in m for m in messages), (name, messages)
             snapshots.append((run.returncode, run.stdout, run.stderr, raw, requests, count))
         if options.compare:
             assert snapshots[0] == snapshots[1], (name, snapshots)

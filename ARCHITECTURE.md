@@ -81,9 +81,10 @@ A retry clears the current turn's buffers; a reported error or interrupt skips
 their history writes. Text already displayed and tools already executed are
 **not rolled back**. A retried response can therefore execute a tool again.
 
-Reasoning is displayed but not stored in conversation history. History writes
-are ordinary appends, not a database transaction; concurrent writers to the same
-conversation are not coordinated.
+Reasoning is displayed and, when nonempty, stored as `reasoning_content` on the
+assistant message and replayed with history, including across tool calls.
+History writes are ordinary appends, not a database transaction; concurrent
+writers to the same conversation are not coordinated.
 
 ## Execution boundaries
 

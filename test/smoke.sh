@@ -37,8 +37,8 @@ call='{"id":"c1","type":"function","function":{"name":"wc","arguments":"{\"args\
 call="${call//\\/\\\\}"
 [ "$out" = "$(printf 'tool_calls\twc\tc1\t%s\t=-l\t=a b' "$call")" ] || { echo "FAIL: tool_calls argv"; exit 1; }
 
-esc=$(printf 'a"b\nc 中文' | LC_ALL=C awk -v json_mode=escape_string -f "$d/program.awk")
-[ "$esc" = 'a\"b\nc 中文' ] || { echo "FAIL: escape ($esc)"; exit 1; }
+esc=$(printf 'a"b\nc 中文\n\n.' | LC_ALL=C awk -v json_mode=escape_string -f "$d/program.awk")
+[ "$esc" = 'a\"b\nc 中文\n\n' ] || { echo "FAIL: escape ($esc)"; exit 1; }
 
 # Check middle truncation, including zero-length tails and exact-limit output.
 (
