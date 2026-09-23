@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1><samp>&gt;_ agent.sh</samp></h1>
+<h1><img src="logo.svg" alt="agent.sh" width="280" height="80"></h1>
 
 **One script. Your tools. An AI agent.**
 

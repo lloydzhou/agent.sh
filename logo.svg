@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="80" viewBox="0 0 280 80" role="img" aria-labelledby="title">
+  <title id="title">agent.sh</title>
+  <rect width="280" height="80" rx="12" fill="#111b21"/>
+  <path d="m22 28 12 12-12 12m23 0h14" fill="none" stroke="#85efb8" stroke-width="4" stroke-linecap="square"/>
+  <text x="80" y="51" fill="#eef5f2" font-family="monospace" font-size="32" font-weight="700">agent.sh</text>
+</svg>
