@@ -1,6 +1,6 @@
 <div align="center">
 
-# agent.sh
+<h1><samp>&gt;_ agent.sh</samp></h1>
 
 **One script. Your tools. An AI agent.**
 
