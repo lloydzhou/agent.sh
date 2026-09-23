@@ -38,6 +38,42 @@ headers and reports HTTP/curl errors or a new response following a retry.
 The JSON/SSE parser then emits events consumed by `agent_loop`. Tool calls run
 sequentially, even when a response contains several calls.
 
+## Skill discovery
+
+```text
+.agents/skills/
+└── code-review/
+    ├── SKILL.md
+    └── references/
+```
+
+A minimal `SKILL.md`:
+
+```markdown
+---
+name: code-review
+description: Review code changes for correctness and maintainability.
+---
+Read the changed files. Prioritize bugs and regressions over style preferences.
+Explain each finding with a file location and a suggested fix.
+```
+
+The agent sees the index first, then uses a suitable available tool such as `cat`
+or `bash` to read a matching skill. **You do not need `.agents/tools/skill`.** If no
+suitable tool is available, the prompt tells the model not to assume the contents.
+
+### Index format and scope
+
+The optional `skills/` directory is not created automatically. Each request scans
+`$AGENT_DIR/skills/*/SKILL.md` and adds a `<skill-index>` between the environment
+and user instructions. Entries contain the directory name, single-line
+`description:` from `---` frontmatter, and the file path. Matching outer quotes
+are removed; YAML escapes, multiline descriptions, and other YAML syntax are
+not interpreted. Missing/unsupported descriptions leave just the name and path.
+No recursive discovery, cache, or skill-body preloading is used. The model reads
+matching files through available tools (for example `cat` or `bash`); the index
+does not add a dedicated skill tool.
+
 ## One embedded awk program
 
 The JSON helpers and SSE parser share `AWK_PROGRAM`, stored in a quoted heredoc
