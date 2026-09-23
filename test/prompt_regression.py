@@ -26,7 +26,16 @@ with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
     assert 'By default, use Chinese' in run('agent_build_prompt', 'zh_CN.UTF-8')
     for locale in ['ja_JP.UTF-8', 'ko_KR.UTF-8', 'POSIX']:
         assert 'By default, use English' in run('agent_build_prompt', locale)
-    run('cmd_init')
+    assert 'Usage:' in run('main --help')
+    for action, error in [('main --model', 'requires a model'),
+                          ('API_KEY=""; main prompt', 'OPENAI_API_KEY is not set')]:
+        result = subprocess.run(
+            ['bash', '-c', 'source "$1"; ' + action, 'test', str(library)],
+            env=env, cwd=work, capture_output=True, text=True)
+        assert result.returncode == 1 and error in result.stderr, result
+    assert not agent.exists() and not (work / 'AGENTS.md').exists()
+    startup = 'tools_load() { :; }; agent_loop() { :; }; API_KEY=test; main prompt'
+    assert run(startup) == ''
     assert (agent / 'tools').is_dir()
     rules = work / 'AGENTS.md'
     history = agent / 'conv.jsonl'
@@ -34,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
     assert history.read_bytes() == b''
     rules.write_text('Custom role. Answer in French.\n')
     history.write_bytes(b'preserve history\n')
-    run('cmd_init')
+    assert run(startup) == ''
     assert rules.read_text() == 'Custom role. Answer in French.\n'
     assert history.read_bytes() == b'preserve history\n'
     prompt = run('agent_build_prompt')
@@ -43,7 +52,7 @@ with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
     (agent / 'AGENTS.md').write_text('Do not load this file.')
     assert 'Do not load this file.' not in run('agent_build_prompt')
     env['AGENT_DIR'] = str(work / 'custom-state')
-    run('cmd_init')
+    assert run(startup) == ''
     assert (work / 'custom-state/tools').is_dir()
     assert not (work / 'custom-state/AGENTS.md').exists()
     assert run('agent_build_prompt').endswith('Custom role. Answer in French.\n')
@@ -53,6 +62,8 @@ with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
     assert 'User instructions:' not in run('agent_build_prompt')
     assert 'Each call passes "args"' in run('agent_build_prompt')
     rules.write_text('')
+    assert run(startup) == ''
+    assert rules.read_text() == ''
     assert 'Each call passes "args"' in run('agent_build_prompt')
     assert '<skill-index>' not in run('agent_build_prompt')
     skills = work / 'custom-state/skills'
@@ -91,4 +102,4 @@ with tempfile.TemporaryDirectory(prefix='agent-prompt-') as tmp:
         result = subprocess.run(['bash', str(ROOT / 'agent.sh'), *args],
                                 env=env, cwd=work, capture_output=True, text=True, timeout=3)
         assert result.returncode == 1 and 'requires a model' in result.stderr
-print('Prompt regressions ok (rules, locale, reload, init, missing/empty rules, and skill index)')
+print('Prompt regressions ok (rules, locale, reload, automatic initialization, missing/empty rules, and skill index)')

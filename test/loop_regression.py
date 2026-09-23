@@ -36,6 +36,7 @@ prior = [{'role': 'user', 'content': 'earlier'}, {'role': 'assistant', 'content'
 # name, responses, prior history, CLI args, stdin, max turns, expected rc, roles, executions
 cases = [
     ('prompt', [plain], [], ['prompt'], '', 3, 0, ['user', 'assistant'], 0),
+    ('init-is-prompt', [plain], [], ['init'], '', 3, 0, ['user', 'assistant'], 0),
     ('stdin', [plain], [], [], 'from stdin\n', 3, 0, ['user', 'assistant'], 0),
     ('empty-stdin', [plain], [], [], '', 3, 0, ['user', 'assistant'], 0),
     ('history', [plain], prior, ['prompt'], '', 3, 0, ['user', 'assistant', 'user', 'assistant'], 0),

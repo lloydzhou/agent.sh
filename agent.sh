@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
+# 550S — Shell. Single-file. Symlink.
+#
+# Built on the shell.
+# Delivered as one file.
+# Extended with symlinks.
+#
+# Source: https://github.com/lloydzhou/agent.sh
+# License: MIT — see LICENSE in the source repository.
 # agent.sh — filesystem-first AI agent in pure bash/awk
 # Chat Completions only; dependencies: bash, curl, awk.
-# init: AGENTS.md (rules), .agents/tools/ (executables), .agents/conv.jsonl (history).
+# Auto-create: AGENTS.md (rules), .agents/tools/ (executables), .agents/conv.jsonl (history).
 
 set -uo pipefail
 
@@ -14,7 +22,6 @@ CONV_FILE="$AGENT_DIR/conv.jsonl"
 MAX_TURNS="${MAX_TURNS:-50}"
 TOOL_TIMEOUT_SECS="${TOOL_TIMEOUT_SECS:-60}"
 TOOL_RESULT_MAX_BYTES="${TOOL_RESULT_MAX_BYTES:-100000}"
-CMD_INIT=false
 USER_INPUT=""
 
 TOOL_DEFS_JSON=""
@@ -258,16 +265,7 @@ util_json_escape() {
     printf '%s.' "${1:-}" | util_awk_run -v json_mode=escape_string "$AWK_PROGRAM"
 }
 
-# ================= init / system prompt =================
-cmd_init() {
-    mkdir -p "$TOOLS_DIR"
-    if [[ ! -e "$PWD/AGENTS.md" ]]; then
-        printf '# Agent instructions\n\n' > "$PWD/AGENTS.md"
-    fi
-    touch "$CONV_FILE"
-    printf 'Initialized %s\n' "$AGENT_DIR"
-}
-
+# ================= system prompt =================
 agent_build_prompt() {
     cat <<'PROMPT'
 You are agent.sh, a minimal filesystem-first agent running in a terminal.
@@ -485,7 +483,7 @@ interactive_mode() {
     local line
     printf '\033[36magent.sh (%s) — type exit or Ctrl+D to quit\033[0m\n' "$MODEL"
     while true; do
-        if ! IFS= read -e -r -p $'\033[32m>\033[0m ' line; then printf '\n'; break; fi
+        if ! IFS= read -e -r -p $'\033[32m550S>\033[0m ' line; then printf '\n'; break; fi
         [[ "$line" == "exit" || "$line" == "quit" ]] && break
         [[ -z "$line" ]] && continue
         history -s "$line" 2>/dev/null || true
@@ -501,10 +499,11 @@ usage() {
 agent.sh — filesystem-first AI agent (OpenAI Chat Completions)
 
 Usage:
-  agent.sh init              create AGENTS.md and .agents/{conv.jsonl,tools/}
   agent.sh [prompt]          chat; no prompt + tty opens interactive REPL
   agent.sh < file            read prompt from stdin
   fresh conversation: mv -i .agents/conv.jsonl ".agents/conv-$(date +%Y%m%d-%H%M%S).jsonl"
+
+Missing AGENTS.md, tools directory, and history file are created on startup.
 
 Options:
   -m, --model NAME   model override (env MODEL)
@@ -520,7 +519,6 @@ EOF
 parse_args() {
     while (( $# > 0 )); do
         case "$1" in
-            init) CMD_INIT=true; shift ;;
             -m|--model) [[ -n "${2:-}" ]] || util_die "$1 requires a model"; MODEL="$2"; shift 2 ;;
             -h|--help) usage; exit 0 ;;
             -*) util_die "unknown option: $1 (see --help)" ;;
@@ -533,13 +531,11 @@ parse_args() {
 
 main() {
     parse_args "$@"
-    if [[ "$CMD_INIT" == true ]]; then
-        cmd_init
-        return 0
-    fi
     [[ -n "$API_KEY" ]] || util_die "OPENAI_API_KEY is not set"
-    mkdir -p "$AGENT_DIR"
-    touch "$CONV_FILE"
+    mkdir -p "$TOOLS_DIR" && touch "$CONV_FILE" || util_die "Cannot initialize $AGENT_DIR"
+    if [[ ! -e "$PWD/AGENTS.md" ]]; then
+        printf '# Agent instructions\n\n' > "$PWD/AGENTS.md" || util_die "Cannot create AGENTS.md"
+    fi
     tools_load
     if [[ -z "$USER_INPUT" ]]; then
         if [[ -t 0 ]]; then interactive_mode; return $?; fi

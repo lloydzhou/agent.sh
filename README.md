@@ -30,7 +30,7 @@ ln -s "$(command -v cat)" .agents/tools/cat
 ```
 
 That's the tool registration. No plugin manifest, wrapper, or SDK to write.
-Run `init` and configure your API key first—see below.
+Create `.agents/tools/` and configure your API key first—see below.
 
 ## Why agent.sh?
 
@@ -60,7 +60,7 @@ export OPENAI_API_KEY="your-api-key"
 export MODEL="your-model-name"  # a model supported by your endpoint
 # Optional: export OPENAI_BASE_URL="https://your-provider.example/v1"
 
-./agent.sh init
+mkdir -p .agents/tools
 ln -s "$(command -v cat)" .agents/tools/cat
 ./agent.sh "Read README.md and summarize this project."
 ```
@@ -99,8 +99,9 @@ remain present even when you customize the agent. Locale selects the default
 output language (Chinese or English); user instructions can override it.
 Only `$PWD/AGENTS.md` is loaded, without parent-directory or recursive discovery.
 `AGENT_DIR` overrides the tools/state directory, not the instructions location.
-`./agent.sh init` creates a minimal editable `AGENTS.md` without overwriting
-existing instructions or conversation history. No migration or fallback files.
+Startup automatically creates missing tools/history paths and a minimal editable
+`AGENTS.md`, without overwriting existing instructions or conversation history.
+No separate initialization command, migration, or fallback files.
 
 ## Tools = executables with an argument array
 
@@ -175,7 +176,7 @@ suitable tool is available, the prompt tells the model not to assume the content
 <details>
 <summary>Index format and scope</summary>
 
-The optional `skills/` directory is not created by `init`. Each request scans
+The optional `skills/` directory is not created automatically. Each request scans
 `$AGENT_DIR/skills/*/SKILL.md` and adds a `<skill-index>` between the environment
 and user instructions. Entries contain the directory name, single-line
 `description:` from `---` frontmatter, and the file path. Matching outer quotes
@@ -199,7 +200,7 @@ does not add a dedicated skill tool.
 | `TOOL_RESULT_MAX_BYTES` | `100000` | per-tool output cap |
 | `AGENT_DIR` | `$PWD/.agents` | agent directory override |
 
-CLI: `init`, `-m/--model`, `-h/--help`.
+CLI: `-m/--model`, `-h/--help`.
 
 Curious about the internals? See [Implementation notes](ARCHITECTURE.md).
 
