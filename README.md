@@ -2,7 +2,9 @@
 
 <h1><img src="logo.svg" alt="agent.sh" width="280" height="80"></h1>
 
-**One script. Your tools. An AI agent.**
+**550S · Shell. Single-file. Symlink.**
+
+One script. Your tools. An AI agent.
 
 A filesystem-first AI agent in ~550 lines of Bash + awk.
 
@@ -31,6 +33,8 @@ That's the tool registration. No plugin manifest, wrapper, or SDK to write.
 Run `init` and configure your API key first—see below.
 
 ## Why agent.sh?
+
+**Built on the shell. Delivered as one file. Extended with symlinks.**
 
 - **Small enough to read end to end.** The runtime lives in one script, including JSON parsing and SSE streaming. Copy it anywhere; no generated files.
 - **Your executables are the tools.** Drop a binary, script, or symlink into `.agents/tools/`. Names and descriptions are discovered automatically.
