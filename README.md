@@ -69,7 +69,7 @@ ln -s "$(command -v cat)" .agents/tools/cat
 ./agent.sh "Read README.md and summarize this project."
 ```
 
-Prefer a standalone script? Copy `agent.sh` into your own project. It uses the
+Prefer a standalone script? Put `agent.sh` anywhere on disk — it uses the
 **current working directory**, not the script's location, for rules and state.
 
 ```sh
@@ -89,11 +89,12 @@ mv -i .agents/conv.jsonl ".agents/conv-$(date +%Y%m%d-%H%M%S).jsonl"
 
 ## The filesystem is the authoring interface
 
-A typical project is one script, one Markdown file, and one state directory:
+A project contains no agent code. Keep `agent.sh` anywhere you like — it
+operates on the current working directory, so all a project needs is an
+instructions file and a state directory, both auto-created on first run:
 
 ```text
 my-project/
-├── agent.sh           # the entire runtime — one file, readable end to end
 ├── AGENTS.md          # always-on instructions; edit freely, re-read every request
 └── .agents/
     ├── conv.jsonl     # conversation persistence; restart to resume
