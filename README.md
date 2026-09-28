@@ -99,8 +99,8 @@ my-project/
 └── .agents/
     ├── conv.jsonl     # conversation persistence; restart to resume
     ├── tools/         # tools are executables; the filename is the tool name
-    │   ├── cat -> /bin/cat
-    │   └── jq -> /usr/local/bin/jq
+    │   ├── grep -> /usr/bin/grep
+    │   └── sed -> /usr/bin/sed
     └── skills/        # optional procedures; indexed in the prompt, read on demand
         └── review/SKILL.md
 ```
