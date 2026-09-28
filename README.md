@@ -16,7 +16,7 @@ A filesystem-first AI agent in ~550 lines of Bash + awk.
 
 **No SDK. No npm or pip. No build step.**
 
-[Quick start](#quick-start) · [Tools](#tools--executables-with-an-argument-array) · [Skills](#skills-without-a-skill-tool) · [Configuration](#configuration)
+[Quick start](#quick-start) · [Authoring](#the-filesystem-is-the-authoring-interface) · [Tools](#tools--executables-with-an-argument-array) · [Skills](#skills-without-a-skill-tool) · [Configuration](#configuration)
 
 </div>
 
@@ -33,6 +33,10 @@ That's the tool registration. No plugin manifest, wrapper, or SDK to write.
 Create `.agents/tools/` and configure your API key first—see below.
 
 ## Why agent.sh?
+
+agent.sh is a filesystem-first AI agent. Core agent capabilities live in
+conventional locations — tools are executables, instructions are Markdown,
+history is a file — so it is easy to inspect, extend, and operate.
 
 **Built on the shell. Delivered as one file. Extended with symlinks.**
 
@@ -83,25 +87,35 @@ mv -i .agents/conv.jsonl ".agents/conv-$(date +%Y%m%d-%H%M%S).jsonl"
 > **Tools are not sandboxed.** They run with your shell privileges and
 > model-supplied arguments. Start with tools you trust and a disposable workspace.
 
-## Layout
+## The filesystem is the authoring interface
 
-```
-AGENTS.md           user instructions — edit freely, re-read on every request
-.agents/
-  conv.jsonl        conversation persistence (OpenAI message per line)
-  tools/            executables; filename = tool name
-  skills/           optional skills; indexed in the system prompt, read via tools
+A typical project is one script, one Markdown file, and one state directory:
+
+```text
+my-project/
+├── agent.sh           # the entire runtime — one file, readable end to end
+├── AGENTS.md          # always-on instructions; edit freely, re-read every request
+└── .agents/
+    ├── conv.jsonl     # conversation persistence; restart to resume
+    ├── tools/         # tools are executables; the filename is the tool name
+    │   ├── cat -> /bin/cat
+    │   └── jq -> /usr/local/bin/jq
+    └── skills/        # optional procedures; indexed in the prompt, read on demand
+        └── review/SKILL.md
 ```
 
-The system prompt combines built-in tool rules, runtime environment, and an
-optional user-instruction slot loaded from `$PWD/AGENTS.md`. Tool rules
-remain present even when you customize the agent. Locale selects the default
+Add a tool with a symlink, a skill with a file, a rule with Markdown. There is
+no manifest, SDK, or config format to learn — authoring the agent and
+operating the filesystem are the same activity.
+
+The system prompt combines built-in tool rules, the runtime environment, an
+optional skill index, and the current directory's `AGENTS.md` — only the
+instructions slot is yours; tool rules stay intact. Locale selects the default
 output language (Chinese or English); user instructions can override it.
-Only `$PWD/AGENTS.md` is loaded, without parent-directory or recursive discovery.
-`AGENT_DIR` overrides the tools/state directory, not the instructions location.
-Startup automatically creates missing tools/history paths and a minimal editable
-`AGENTS.md`, without overwriting existing instructions or conversation history.
-No separate initialization command, migration, or fallback files.
+`AGENT_DIR` relocates tools and state, not instructions. Startup creates
+missing paths and a minimal `AGENTS.md` without overwriting anything already
+present. Only `$PWD/AGENTS.md` is loaded — no parent-directory or recursive
+discovery, and no separate init command or migration.
 
 ## Tools = executables with an argument array
 
@@ -176,8 +190,9 @@ Curious about the internals? See [Implementation notes](ARCHITECTURE.md).
 ## Origins
 
 Derived from [bash-agent](https://github.com/lloydzhou/bash-agent) and simplified
-into a single-file runtime. Filesystem-based tool discovery is inspired by
-[vercel/eve](https://github.com/vercel/eve); tools here are ordinary executables.
+into a single-file runtime. The "filesystem as the authoring interface" framing
+follows [vercel/eve](https://github.com/vercel/eve); agent.sh takes it one step
+further — tools here are ordinary executables, so there is no code to write.
 
 ## License
 
