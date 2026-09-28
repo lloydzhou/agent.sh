@@ -25,8 +25,8 @@ A filesystem-first AI agent in ~550 lines of Bash + awk.
 **Give your agent a tool with a symlink:**
 
 ```sh
-ln -s "$(command -v cat)" .agents/tools/cat
-./agent.sh "Read README.md and summarize this project."
+ln -s "$(command -v grep)" .agents/tools/grep
+./agent.sh "Find the Tools section in README.md and summarize it."
 ```
 
 That's the tool registration. No plugin manifest, wrapper, or SDK to write.
@@ -65,8 +65,9 @@ export MODEL="your-model-name"  # a model supported by your endpoint
 # Optional: export OPENAI_BASE_URL="https://your-provider.example/v1"
 
 mkdir -p .agents/tools
-ln -s "$(command -v cat)" .agents/tools/cat
-./agent.sh "Read README.md and summarize this project."
+ln -s "$(command -v grep)" .agents/tools/grep
+ln -s "$(command -v sed)" .agents/tools/sed
+./agent.sh "Find the Tools section in README.md and summarize it."
 ```
 
 Prefer a standalone script? Put `agent.sh` anywhere on disk — it uses the
@@ -124,9 +125,8 @@ Drop any executable into `.agents/tools/` — a binary, a symlink to one, or
 your own script. Filename is the tool name:
 
 ```sh
-ln -s "$(command -v cat)" .agents/tools/cat
-# If jq is installed, you can expose it too:
-ln -s "$(command -v jq)" .agents/tools/jq
+ln -s "$(command -v grep)" .agents/tools/grep
+ln -s "$(command -v sed)" .agents/tools/sed
 ```
 
 Every tool receives an `args` array of strings. The agent passes each
